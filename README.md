@@ -1,2 +1,2 @@
-# portfolio-true_name
-Portfolio project for the end of the first year at Holberton School : a convention-based file renaming tool for Windows.
+# portfolio_ml-truename
+Portfolio project for the machine learning specialization at Holberton School.
