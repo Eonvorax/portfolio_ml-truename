@@ -1,0 +1,9 @@
+langdetect==1.0.9
+PyMuPDF==1.22.2
+PyQt6==6.6.1
+PyQt6_sip==13.6.0
+spacy>=3.7.2,<4.0.0
+pillow==10.3.0
+transformers==4.40.1
+en_core_web_sm @ https://github.com/explosion/spacy-models/releases/download/en_core_web_sm-3.7.1/en_core_web_sm-3.7.1-py3-none-any.whl
+fr_core_news_sm @ https://github.com/explosion/spacy-models/releases/download/fr_core_news_sm-3.7.0/fr_core_news_sm-3.7.0-py3-none-any.whl
