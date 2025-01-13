@@ -1,0 +1,9 @@
+# Python cache files / directory
+*.pyc
+__pycache__/
+
+# Virtual environment directory
+venv/
+
+# test document files directory
+/test_files
