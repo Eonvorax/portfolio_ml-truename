@@ -7,3 +7,9 @@ venv/
 
 # test document files directory
 /test_files
+
+# Installer build directory
+/build
+
+# Installer dist directory
+/dist
