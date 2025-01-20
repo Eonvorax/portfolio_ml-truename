@@ -8,6 +8,22 @@ from clean_filename import secure_filename
 from PIL import Image
 from transformers import BlipProcessor, BlipForConditionalGeneration
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
+import torch
+
+def cuda_setup():
+    """
+    Check if CUDA is available and sets up the device variable accordingly.
+
+    Returns:
+        device (torch.device): the device to use for the models
+    """
+    if torch.cuda.is_available():
+        device = torch.device("cuda")
+        print(f"CUDA is available, using GPU: {torch.cuda.get_device_name(0)}")
+    else:
+        device = torch.device("cpu")
+        print("CUDA is not available, using CPU.")
+    return device
 
 flan_tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-large")
 flan_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-large")
@@ -15,11 +31,16 @@ flan_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-large")
 blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
 blip_model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
 
+# Move the models to the GPU if available
+device = cuda_setup()
+flan_model.to(device)
+blip_model.to(device)
+
+
 file_formats = {
     "image_formats": ("png", "jpeg", "jpg", "webp"),
     "text_formats": ("pdf")
 }
-
 
 class File:
     """
@@ -144,8 +165,9 @@ class File:
         inputs = flan_tokenizer([input_text], return_tensors='pt', truncation=True)
         print("Input tokens:", inputs.tokens())
 
-        # NOTE Not handling moving to GPU for now
-        # inputs = inputs.to(device)  # Move inputs to the same device as the model
+        # Move inputs to the same device as flan_model
+        inputs = inputs.to(device)
+        
         output_ids = flan_model.generate(
             inputs['input_ids'],
             min_length=10,
@@ -190,6 +212,9 @@ class File:
                 print("Processing image...")
                 raw_image = Image.open(file).convert('RGB')
             inputs = blip_processor(raw_image, return_tensors="pt")
+
+            # Move inputs to the same device as blip_model
+            inputs = inputs.to(device)
 
             print("Generating output...")
             hyper_params = {"max_new_tokens": 50,
