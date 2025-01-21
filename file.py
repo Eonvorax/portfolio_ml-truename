@@ -195,7 +195,8 @@ class File:
         print(f"\nWorking on file n°{file_number}")
         print(f"File path : {self.original_path}")
 
-        if self.file_type in file_formats["text_formats"]:
+        # Check if the file type is supported (case-insensitive)
+        if self.file_type.lower() in file_formats["text_formats"]:
             self.extract_content()
             if self.text_content == "":
                 # No content was extracted, either met an issue or the file
@@ -206,7 +207,7 @@ class File:
 
             self.generate_name()
 
-        elif self.file_type in file_formats["image_formats"]:
+        elif self.file_type.lower() in file_formats["image_formats"]:
             # TODO implement a dedicated function
             with open(self.original_path, 'rb') as file:
                 print("Processing image...")
