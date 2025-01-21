@@ -6,10 +6,6 @@ a = Analysis(
     pathex=[],
     binaries=[],
     datas=[
-        ('venv/Lib/site-packages/en_core_web_sm', 'en_core_web_sm'),
-        ('venv/Lib/site-packages/fr_core_news_sm', 'fr_core_news_sm'),
-        ('venv/Lib/site-packages/en_core_web_sm-3.7.1.dist-info', 'en_core_web_sm-3.7.1.dist-info'),
-        ('venv/Lib/site-packages/fr_core_news_sm-3.7.0.dist-info', 'fr_core_news_sm-3.7.0.dist-info'),
         ('styles.qss', '.'),
         ('truename_icon.ico', '.')
     ],
