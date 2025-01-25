@@ -64,6 +64,7 @@ class File:
         # Case-sensitive issues of bad splitting could happen
 
         self._text_content: str = ""
+        self._image_content = None
         self._file_data: dict = {}
         self._new_name: str = ""
         self._new_path: str = ""
@@ -101,6 +102,14 @@ class File:
         self._text_content = value
 
     @property
+    def image_content(self):
+        return self._image_content
+    
+    @image_content.setter
+    def image_content(self, value):
+        self._image_content = value
+
+    @property
     def file_data(self) -> dict:
         return self._file_data
 
@@ -126,7 +135,7 @@ class File:
         self._new_path = value
 
 
-    def extract_content(self) -> None:
+    def extract_text_content(self) -> None:
         """
         Extracts text content from the file at "original_path"
         """
@@ -139,13 +148,25 @@ class File:
             # NOTE Might need to cap this loop for large documents
         self.text_content = text
 
+    def extract_image_content(self) -> None:
+        """
+        Extracts and returns raw image content from the file at "original_path".
+        If an error occurs when opening the image, image_content is set to None.
+        """
+        try:
+            with open(self.original_path, 'rb') as file:
+                self.image_content = Image.open(file).convert('RGB')
+        except Exception as e:
+            self.image_content = None
+            print(f"Error : {e} when opening image at path [{self.original_path}]")
+
     def extract_data(self) -> None:
         """
         TODO
         """
         pass
 
-    def generate_name(self) -> None:
+    def generate_text_name(self) -> None:
         """
         Generate a new name for the file based on the text content.
 
@@ -162,6 +183,7 @@ class File:
         print(f"Text content length: {len(self.text_content)}")
         input_text = prompt + self.text_content
 
+        print("Processing text...")
         inputs = flan_tokenizer([input_text], return_tensors='pt', truncation=True)
         print("Input tokens:", inputs.tokens())
 
@@ -178,6 +200,33 @@ class File:
 
         self.new_name = f"{decoded_output}.{self.file_type}"
 
+    def generate_image_name(self) -> None:
+        """
+        Generate a new name for the file based on the image content.
+
+        This method uses the BLIP-large image captioning model to process the image
+        and generate a new name for the file.
+        The new filename is stored in the `new_name` attribute of the object.
+        This method assumes that the `original_path` attribute points to an
+        image file.
+        """
+        
+        inputs = blip_processor(self.image_content, return_tensors="pt")
+
+        # Move inputs to the same device as blip_model
+        inputs = inputs.to(device)
+
+        print("Generating output...")
+        hyper_params = {
+            "max_new_tokens": 25,
+            "do_sample": True,
+            "temperature": 1.0
+            }
+        out = blip_model.generate(**inputs, **hyper_params)
+        name: str = blip_processor.decode(out[0], skip_special_tokens=True)
+        self.new_name = f"{name.replace(' ', '_')}.{self.file_type}"
+
+
     def build_new_path(self):
         """
         From the new filename and the original path, build the new path.
@@ -191,13 +240,14 @@ class File:
     def process_file(self, file_number: int):
         """
         Processes a file using its corresponding File object.
+        If an error occurs during the process, the file is skipped.
         """
         print(f"\nWorking on file n°{file_number}")
         print(f"File path : {self.original_path}")
 
         # Check if the file type is supported (case-insensitive)
         if self.file_type.lower() in file_formats["text_formats"]:
-            self.extract_content()
+            self.extract_text_content()
             if self.text_content == "":
                 # No content was extracted, either met an issue or the file
                 # may be empty
@@ -205,25 +255,19 @@ class File:
                 # any value for name generation, e.g. len(content) < 100 or so
                 return
 
-            self.generate_name()
+            if self.generate_text_name() == "":
+                # No name was generated, skipping this file
+                return
 
         elif self.file_type.lower() in file_formats["image_formats"]:
-            # TODO implement a dedicated function
-            with open(self.original_path, 'rb') as file:
-                print("Processing image...")
-                raw_image = Image.open(file).convert('RGB')
-            inputs = blip_processor(raw_image, return_tensors="pt")
-
-            # Move inputs to the same device as blip_model
-            inputs = inputs.to(device)
-
-            print("Generating output...")
-            hyper_params = {"max_new_tokens": 50,
-                            "do_sample": True,
-                            "temperature": 1.0}
-            out = blip_model.generate(**inputs, **hyper_params)
-            name: str = blip_processor.decode(out[0], skip_special_tokens=True)
-            self.new_name = f"{name.replace(' ', '_')}.{self.file_type}"
+            self.extract_image_content()
+            if self.image_content is None:
+                # No content was extracted, met an issue when opening the image
+                return
+            
+            if self.generate_image_name() == "":
+                # No name was generated, skipping this file
+                return
 
         else:
             # File format not in file_formats, skipping it.
