@@ -14,7 +14,8 @@ from PyQt6.QtWidgets import (
     QAbstractItemView,
     QLabel,
     QListWidgetItem,
-    QStyledItemDelegate
+    QStyledItemDelegate,
+    QMessageBox
 )
 from PyQt6.QtCore import pyqtSlot, Qt
 from PyQt6.QtGui import QColor, QIcon
@@ -28,6 +29,7 @@ from os import getcwd
 from typing import List
 from clean_filename import secure_filename, dynamic_rename
 from ctypes import windll
+from os import startfile
 
 
 PATH_TO_ICON = 'truename_icon.ico'
@@ -143,9 +145,10 @@ class TrueNameMainWindow(QMainWindow):
         self.source_files_list = QListWidget(self)
         self.source_files_list.setObjectName("source_files_list")
         self.source_files_list.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
+        self.source_files_list.itemDoubleClicked.connect(self.open_file)
         source_paths_layout.addWidget(self.source_files_list)
 
-        # Have to put this after the source_files_list definition :
+        # Select all source files when the button is clicked
         select_all_source_button.clicked.connect(lambda: self.select_all_items(self.source_files_list))
 
         # Add the horizontal button layout to the new paths list layout
@@ -200,7 +203,7 @@ class TrueNameMainWindow(QMainWindow):
             str(getcwd()),
             "Documents (*.pdf *.jpg *.jpeg *.png *.webp);; All Files (*)"
         )
-        # TODO only allow file extensions supported by the app (PDF only for now ?)
+        # TODO only allow file extensions supported by the app
 
         # List of file paths listed in the widget before adding more
         present_file_paths = []
@@ -411,6 +414,21 @@ class TrueNameMainWindow(QMainWindow):
 
         # Clear the "new filenames" widget so the files are not misaligned
         self.new_file_paths_list.clear()
+    
+    @pyqtSlot(QListWidgetItem)
+    def open_file(self, item):
+        """
+        Opens the file represented by the given QListWidgetItem.
+        The file is opened with the default application for its file type.
+        If the file cannot be opened, an error message box is displayed.
+        """
+        file_path = item.text()
+        try:
+            if sys.platform == 'win32':
+                startfile(file_path)
+        except Exception as e:
+            QMessageBox.critical(self, "Error", f"Failed to open file: {file_path}\n\n{str(e)}")
+
 
 class FileNameDelegate(QStyledItemDelegate):
     """
