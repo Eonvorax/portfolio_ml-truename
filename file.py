@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """
-This the file module, containing the File class
+This the file module, containing the File class and the models used to process
+text and image files.
 """
 from os.path import splitext, join, dirname, normpath
 import fitz
@@ -31,7 +32,7 @@ flan_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-large")
 blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
 blip_model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
 
-# Move the models to the GPU if available
+# Move the models to the GPU if available, otherwise use the CPU
 device = cuda_setup()
 flan_model.to(device)
 blip_model.to(device)
@@ -46,11 +47,22 @@ class File:
     """
     This is the File class, representing the file to manipulate and all the
     necessary information to rename it properly.
+
+    Attributes:
+        original_path (str): the path to the file to manipulate
+        original_name (str): the name of the file without its extension
+        file_type (str): the extension of the file
+        text_content (str): the text content of the file if it's a text file
+        image_content (PIL.Image): the raw image content of the file if it's an image
+        new_name (str): the new name of the file
+        new_path (str): the new path of the file after renaming
     """
 
     def __init__(self, file_path: str) -> None:
         """
-        Initialize a File instance from a file path
+        Initialize a File instance from a file path.
+        Args:
+            file_path (str): the path to the file to manipulate
         """
         self._original_path: str = normpath(file_path)
 
@@ -61,11 +73,10 @@ class File:
         # Exluding the "." character from the file extension
         self._file_type: str = file_extension[1:]
         # NOTE Need to be careful with more exotic file extensions like .tar.gz or .JPG
-        # Case-sensitive issues of bad splitting could happen
+        # Case-sensitive issues or bad splitting could happen
 
         self._text_content: str = ""
         self._image_content = None
-        self._file_data: dict = {}
         self._new_name: str = ""
         self._new_path: str = ""
 
@@ -110,14 +121,6 @@ class File:
         self._image_content = value
 
     @property
-    def file_data(self) -> dict:
-        return self._file_data
-
-    @file_data.setter
-    def file_data(self, value: dict) -> None:
-        self._file_data = value
-
-    @property
     def new_name(self) -> str:
         return self._new_name
 
@@ -137,15 +140,22 @@ class File:
 
     def extract_text_content(self) -> None:
         """
-        Extracts text content from the file at "original_path"
+        Extracts text content from the file at "original_path" and stores it
+        in the "text_content" attribute.
+        If an error occurs when opening the file, text_content is set to an empty string.
         """
-
         text = ""
-        # TODO this seems pointlessly complicated, try using self.original_path ?
-        doc = fitz.open(f"{self.original_name}.{self.file_type}")  # open a document
-        for page in doc:  # iterate over the document's pages
-            text += page.get_text()
-            # NOTE Might need to cap this loop for large documents
+        try:
+            # TODO this seems pointlessly complicated, try using self.original_path ?
+            doc = fitz.open(f"{self.original_name}.{self.file_type}")  # open a document
+            for page in doc:  # iterate over the document's pages
+                text += page.get_text()
+                # NOTE Might need to cap this loop for large documents
+
+        except Exception as e:
+            print(f"Error : {e} when opening file at path [{self.original_path}]")
+            text = ""
+
         self.text_content = text
 
     def extract_image_content(self) -> None:
@@ -160,21 +170,14 @@ class File:
             self.image_content = None
             print(f"Error : {e} when opening image at path [{self.original_path}]")
 
-    def extract_data(self) -> None:
-        """
-        TODO
-        """
-        pass
-
     def generate_text_name(self) -> None:
         """
         Generate a new name for the file based on the text content.
 
-        This method uses the FLAN-T5 instruct model to process the text content
+        This method uses the preset instruct model to process the text content
         and generate a new name for the file.
         The new filename is stored in the `new_name` attribute of the object.
-
-        NOTE: This method assumes that the `text_content` attribute is already set.
+        This method assumes that the `text_content` attribute is already set.
         """
         prompt = """Instruction: Generate a short descriptive filename for this text file.
         Content:\n 
@@ -210,7 +213,6 @@ class File:
         This method assumes that the `original_path` attribute points to an
         image file.
         """
-        
         inputs = blip_processor(self.image_content, return_tensors="pt")
 
         # Move inputs to the same device as blip_model
@@ -227,9 +229,10 @@ class File:
         self.new_name = f"{name.replace(' ', '_')}.{self.file_type}"
 
 
-    def build_new_path(self):
+    def build_new_path(self) -> None:
         """
-        From the new filename and the original path, build the new path.
+        From the new filename and the original path, build the new path and
+        store it in the `new_path` attribute.
         """
         # Extract directory from the original path
         directory = dirname(self.original_path)
@@ -237,10 +240,14 @@ class File:
         # Join directory and new filename to create the new path, and normalize it
         self.new_path = normpath(join(directory, self.new_name))
 
-    def process_file(self, file_number: int):
+    def process_file(self, file_number: int) -> None:
         """
         Processes a file using its corresponding File object.
         If an error occurs during the process, the file is skipped.
+
+        Args:
+            file_number (int): the number of the file in the list of files to process
+                (purely for display and logging purposes)
         """
         print(f"\nWorking on file n°{file_number}")
         print(f"File path : {self.original_path}")
