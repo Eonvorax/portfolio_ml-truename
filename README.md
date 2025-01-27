@@ -68,8 +68,10 @@ To create an executable for the application, use `pyinstaller`:
 ## Usage
 ### Launching the Application
 Either of the following methods can be used to launch the application:
-- Run the executable generated using `pyinstaller` to launch the application as a standalone desktop tool: the executable path is `dist/TrueName/TrueName.exe`.
 - Run `python main_window.py` to directly launch the application in a Python environment.
+- Run the executable generated using `pyinstaller` to launch the application as a standalone desktop tool: the executable path is `dist/TrueName/TrueName.exe`.
+    - **Note**: Fair warning, the executable stays unresponsive for a while on the first launch as it downloads the required models and loads them into memory. 
+    **This can take a few minutes**, depending on your internet speed and computer performance. It shouldn't be an issue on further uses, although loading the models into memory can take a few seconds on slower computers. I am planning to add a progress bar to indicate the download progress, and/or have finetuned models included in a downloadable package.
 
 ### Using the Application: Step-by-Step Guide
 
