@@ -73,6 +73,8 @@ Either of the following methods can be used to launch the application:
 
 ### Using the Application: Step-by-Step Guide
 
+![TrueName Application Screenshot](images/TrueName_Screenshot_after_generation.png)
+
 #### 1. Add Files
 - Click the **"Add Files"** button to open the file selection dialog.
 - Select the files you want to rename and click **"Open"** to add them to the list of files to used for filename generation.
