@@ -12,6 +12,23 @@ from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import torch
 
 
+def clean_caption(caption):
+    """
+    Remove common starting filler phrases or words from a BLIP-generated caption.
+
+    Args:
+        caption (str): the caption to clean up
+    
+    Returns:
+        str: the cleaned caption
+    """
+    # "If it's stupid but it works, it ain't stupid."
+    for phrase in ["this is", "there is", "there are", "it is", "an image of"]:
+        if caption.lower().startswith(phrase):
+            # Remove it from the start of the caption only, and strip extra whitespace
+            caption = caption[len(phrase):].strip()
+    return caption
+
 def cuda_setup():
     """
     Check if CUDA is available and sets up the device variable accordingly.
@@ -189,11 +206,14 @@ class File:
 
         print("Processing text...")
         inputs = flan_tokenizer([input_text], return_tensors='pt', truncation=True)
-        print("Input tokens:", inputs.tokens())
+        
+        ## Uncomment to see the tokens of the input
+        # print("Input tokens:", inputs.tokens())
 
         # Move inputs to the same device as flan_model
         inputs = inputs.to(device)
         
+        print("Generating output...")
         output_ids = flan_model.generate(
             inputs['input_ids'],
             min_length=10,
@@ -222,13 +242,14 @@ class File:
         print("Generating output...")
         hyper_params = {
             "do_sample": False,          # No sampling for deterministic results
-            "num_beams": 3,              # Beam search to improve reliability
+            "num_beams": 8,              # Beam search to improve reliability
             "repetition_penalty": 1.3,   # Higher repetition penalty
+            "no_repeat_ngram_size": 3,   # Avoid repeating the 3 same words
             "min_length": 10,
             "max_length": 25
             }
         out = blip_model.generate(**inputs, **hyper_params)
-        name: str = blip_processor.decode(out[0], skip_special_tokens=True)
+        name: str = clean_caption(blip_processor.decode(out[0], skip_special_tokens=True))
         self.new_name = f"{name.replace(' ', '_')}.{self.file_type}"
 
 
