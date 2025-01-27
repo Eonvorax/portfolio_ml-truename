@@ -11,6 +11,7 @@ from transformers import BlipProcessor, BlipForConditionalGeneration
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import torch
 
+
 def cuda_setup():
     """
     Check if CUDA is available and sets up the device variable accordingly.
@@ -220,9 +221,11 @@ class File:
 
         print("Generating output...")
         hyper_params = {
-            "max_new_tokens": 25,
-            "do_sample": True,
-            "temperature": 1.0
+            "do_sample": False,          # No sampling for deterministic results
+            "num_beams": 3,              # Beam search to improve reliability
+            "repetition_penalty": 1.3,   # Higher repetition penalty
+            "min_length": 10,
+            "max_length": 25
             }
         out = blip_model.generate(**inputs, **hyper_params)
         name: str = blip_processor.decode(out[0], skip_special_tokens=True)
