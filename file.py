@@ -3,13 +3,31 @@
 This the file module, containing the File class and the models used to process
 text and image files.
 """
-from os.path import splitext, join, dirname, normpath
+from os.path import splitext, join, dirname, normpath, basename
 import fitz
 from clean_filename import secure_filename
 from PIL import Image
 from transformers import BlipProcessor, BlipForConditionalGeneration
 from transformers import AutoTokenizer, AutoModelForSeq2SeqLM
 import torch
+
+
+def clean_caption(caption):
+    """
+    Remove common starting filler phrases or words from a BLIP-generated caption.
+
+    Args:
+        caption (str): the caption to clean up
+    
+    Returns:
+        str: the cleaned caption
+    """
+    # "If it's stupid but it works, it ain't stupid."
+    for phrase in ["this is", "there is", "there are", "it is", "an image of"]:
+        if caption.lower().startswith(phrase):
+            # Remove it from the start of the caption only, and strip extra whitespace
+            caption = caption[len(phrase):].strip()
+    return caption
 
 def cuda_setup():
     """
@@ -64,12 +82,18 @@ class File:
         Args:
             file_path (str): the path to the file to manipulate
         """
+        # Normalize the file path
         self._original_path: str = normpath(file_path)
 
-        # Splitting the file path :
-        filename, file_extension = splitext(file_path)
-        self._original_name: str = filename
+        # Extract the full filename with extension
+        full_filename = basename(self._original_path)
 
+        # Splitting the file path into name and extension
+        filename, file_extension = splitext(full_filename)
+        
+        # Storing the extracted values
+        self._original_name: str = filename
+        
         # Exluding the "." character from the file extension
         self._file_type: str = file_extension[1:]
         # NOTE Need to be careful with more exotic file extensions like .tar.gz or .JPG
@@ -147,7 +171,7 @@ class File:
         text = ""
         try:
             # TODO this seems pointlessly complicated, try using self.original_path ?
-            doc = fitz.open(f"{self.original_name}.{self.file_type}")  # open a document
+            doc = fitz.open(f"{self.original_path}")  # open a document
             for page in doc:  # iterate over the document's pages
                 text += page.get_text()
                 # NOTE Might need to cap this loop for large documents
@@ -175,9 +199,9 @@ class File:
         Generate a new name for the file based on the text content.
 
         This method uses the preset instruct model to process the text content
-        and generate a new name for the file.
-        The new filename is stored in the `new_name` attribute of the object.
-        This method assumes that the `text_content` attribute is already set.
+        and generate a new name for the file. The new filename is stored in the
+        `new_name` attribute of the object. Assumes the `text_content` attribute
+        contains the full text content of the file.
         """
         prompt = """Instruction: Generate a short descriptive filename for this text file.
         Content:\n 
@@ -188,19 +212,27 @@ class File:
 
         print("Processing text...")
         inputs = flan_tokenizer([input_text], return_tensors='pt', truncation=True)
-        print("Input tokens:", inputs.tokens())
+
+        ## Uncomment to see the tokens of the input
+        # print("Input tokens:", inputs.tokens())
 
         # Move inputs to the same device as flan_model
         inputs = inputs.to(device)
         
+        print("Generating output...")
         output_ids = flan_model.generate(
             inputs['input_ids'],
             min_length=10,
             max_length=25,
-            do_sample=False
+            do_sample=False,  # Deterministic output for reliability
+            repetition_penalty=1.5,  # Penalize repetitive tokens
+            no_repeat_ngram_size=3  # Avoid repeated phrases
         )
+
+        # Decode the output
         decoded_output = flan_tokenizer.decode(output_ids[0], skip_special_tokens=True)
 
+        # Set the generated filename
         self.new_name = f"{decoded_output}.{self.file_type}"
 
     def generate_image_name(self) -> None:
@@ -220,12 +252,15 @@ class File:
 
         print("Generating output...")
         hyper_params = {
-            "max_new_tokens": 25,
-            "do_sample": True,
-            "temperature": 1.0
+            "do_sample": False,          # No sampling for deterministic results
+            "num_beams": 8,              # Beam search to improve reliability
+            "repetition_penalty": 1.3,   # Higher repetition penalty
+            "no_repeat_ngram_size": 3,   # Avoid repeating the 3 same words
+            "min_length": 10,
+            "max_length": 25
             }
         out = blip_model.generate(**inputs, **hyper_params)
-        name: str = blip_processor.decode(out[0], skip_special_tokens=True)
+        name: str = clean_caption(blip_processor.decode(out[0], skip_special_tokens=True))
         self.new_name = f"{name.replace(' ', '_')}.{self.file_type}"
 
 
