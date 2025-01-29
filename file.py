@@ -170,8 +170,7 @@ class File:
         """
         text = ""
         try:
-            # TODO this seems pointlessly complicated, try using self.original_path ?
-            doc = fitz.open(f"{self.original_path}")  # open a document
+            doc = fitz.open(f"{self.original_path}")  # open the PDF file
             for page in doc:  # iterate over the document's pages
                 text += page.get_text()
                 # NOTE Might need to cap this loop for large documents
