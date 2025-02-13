@@ -146,6 +146,7 @@ class TrueNameMainWindow(QMainWindow):
         self.source_files_list.setObjectName("source_files_list")
         self.source_files_list.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
         self.source_files_list.itemDoubleClicked.connect(self.open_file)
+        source_list_scrollbar = self.source_files_list.verticalScrollBar()
         source_paths_layout.addWidget(self.source_files_list)
 
         # Select all source files when the button is clicked
@@ -169,6 +170,7 @@ class TrueNameMainWindow(QMainWindow):
         self.new_file_paths_list.setSelectionMode(QAbstractItemView.SelectionMode.MultiSelection)
         self.new_file_paths_list.itemDoubleClicked.connect(self.make_item_editable)
         self.new_file_paths_list.itemChanged.connect(self.on_item_changed)
+        new_list_scrollbar = self.new_file_paths_list.verticalScrollBar()
         new_paths_layout.addWidget(self.new_file_paths_list)
 
         # Adding both list widgets to the lists layout, then adding it to the general layout
@@ -178,6 +180,10 @@ class TrueNameMainWindow(QMainWindow):
         list_widgets_layout.setStretchFactor(new_paths_layout, 6)
 
         self.general_layout.addLayout(list_widgets_layout)
+
+        # Connecting the scrollbars of the two list widgets to sync them
+        source_list_scrollbar.valueChanged.connect(new_list_scrollbar.setValue)
+        new_list_scrollbar.valueChanged.connect(source_list_scrollbar.setValue)
 
         # Progress bar window
         self.progress_window = ProgressBarWindow()
