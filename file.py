@@ -29,31 +29,12 @@ def clean_caption(caption):
             caption = caption[len(phrase):].strip()
     return caption
 
-def cuda_setup():
-    """
-    Check if CUDA is available and sets up the device variable accordingly.
-
-    Returns:
-        device (torch.device): the device to use for the models
-    """
-    if torch.cuda.is_available():
-        device = torch.device("cuda")
-        print(f"CUDA is available, using GPU: {torch.cuda.get_device_name(0)}")
-    else:
-        device = torch.device("cpu")
-        print("CUDA is not available, using CPU.")
-    return device
 
 flan_tokenizer = AutoTokenizer.from_pretrained("google/flan-t5-large")
-flan_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-large")
-
 blip_processor = BlipProcessor.from_pretrained("Salesforce/blip-image-captioning-large")
-blip_model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large")
 
-# Move the models to the GPU if available, otherwise use the CPU
-device = cuda_setup()
-flan_model.to(device)
-blip_model.to(device)
+flan_model = AutoModelForSeq2SeqLM.from_pretrained("google/flan-t5-large", device_map="auto")
+blip_model = BlipForConditionalGeneration.from_pretrained("Salesforce/blip-image-captioning-large", device_map="auto")
 
 
 file_formats = {
@@ -216,7 +197,7 @@ class File:
         # print("Input tokens:", inputs.tokens())
 
         # Move inputs to the same device as flan_model
-        inputs = inputs.to(device)
+        inputs = inputs.to(flan_model.device)
         
         print("Generating output...")
         output_ids = flan_model.generate(
@@ -247,7 +228,7 @@ class File:
         inputs = blip_processor(self.image_content, return_tensors="pt")
 
         # Move inputs to the same device as blip_model
-        inputs = inputs.to(device)
+        inputs = inputs.to(blip_model.device)
 
         print("Generating output...")
         hyper_params = {
