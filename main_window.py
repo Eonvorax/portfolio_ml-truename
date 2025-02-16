@@ -226,6 +226,14 @@ class TrueNameMainWindow(QMainWindow):
                 self.source_files_list.addItem(item)
                 current_file = file.File(added_file_path)
                 self.files_instance_list.append(current_file)
+                
+                # Extracting text or image content for the file depending on its type
+                if current_file.file_type.lower() in file.file_formats["text_formats"]:
+                    current_file.extract_text_content()
+                elif current_file.file_type.lower() in file.file_formats["image_formats"]:
+                    current_file.extract_image_content()
+                else:
+                    pass
 
 
     @pyqtSlot()

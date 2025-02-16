@@ -151,13 +151,14 @@ class File:
         """
         text = ""
         try:
-            doc = fitz.open(f"{self.original_path}")  # open the PDF file
-            for page in doc:  # iterate over the document's pages
-                text += page.get_text()
-                # NOTE Might need to cap this loop for large documents
+            with fitz.open(self.original_path) as doc:
+                pages_text_list = []
+                for page in doc:
+                    pages_text_list.append(page.get_text("text"))
+                text = "".join(pages_text_list)
 
         except Exception as e:
-            print(f"Error : {e} when opening file at path [{self.original_path}]")
+            print(f"Error: {e} when opening file at path [{self.original_path}]")
             text = ""
 
         self.text_content = text
@@ -269,7 +270,6 @@ class File:
 
         # Check if the file type is supported (case-insensitive)
         if self.file_type.lower() in file_formats["text_formats"]:
-            self.extract_text_content()
             if self.text_content == "":
                 # No content was extracted, either met an issue or the file
                 # may be empty
@@ -282,7 +282,6 @@ class File:
                 return
 
         elif self.file_type.lower() in file_formats["image_formats"]:
-            self.extract_image_content()
             if self.image_content is None:
                 # No content was extracted, met an issue when opening the image
                 return
